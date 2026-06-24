@@ -16,10 +16,10 @@ var SHEET_RECORDS  = '登記資料';
 var SHEET_STATS    = '統計';
 
 // 登記資料欄位順序（用「位置」讀寫，新增欄位請放最後）
+// 單一商品設計：不需商品2、不需小計
 var REC_HEADERS = [
   '建立時間', '姓名',
-  '商品1名稱', '商品1單價', '商品1數量', '商品1小計',
-  '商品2名稱', '商品2單價', '商品2數量', '商品2小計',
+  '商品名稱', '單價', '數量',
   '商品總金額', '取貨方式', '郵寄費', '總金額',
   '收件人', '收件人電話', '配送方式',
   '超商名稱', '門市名稱', '門市地址', '郵遞區號', '完整收件地址',
@@ -184,29 +184,16 @@ function handleSubmit_(dataStr) {
   try {
     var sh = getSheet_(SHEET_RECORDS);
 
-    // 商品1 / 商品2 對應「商品設定」前兩列商品，沒買的記 0
-    function colFor(idx) {
-      var p = products[idx];
-      if (!p) return { name: '', price: '', qty: '', sub: '' };
-      var hit = null;
-      chosen.forEach(function (c) { if (c.id === p.id) hit = c; });
-      return {
-        name: p.name,
-        price: p.price,
-        qty: hit ? hit.qty : 0,
-        sub: hit ? hit.subtotal : 0
-      };
-    }
-    var c1 = colFor(0), c2 = colFor(1);
+    // 單一商品：記錄實際購買的商品名稱／單價／數量
+    var buy = chosen[0];
 
     var row = [
       new Date(), name,
-      c1.name, c1.price, c1.qty, c1.sub,
-      c2.name, c2.price, c2.qty, c2.sub,
+      buy.name, buy.price, buy.qty,
       productTotal, pickupLabel, mailFee, grandTotal,
       recipient, phone, deliveryType,
       cvsName, storeName, storeAddr, zip, address,
-      (mailFee > 0 ? '未付款' : '未付款'), '未處理', '', ''
+      '未付款', '未處理', '', ''
     ];
     sh.getRange(sh.getLastRow() + 1, 1, 1, row.length).setValues([row]);
     SpreadsheetApp.flush();
@@ -432,13 +419,9 @@ function buildStats_() {
   var rows = [
     ['統計項目', '數值'],
     ['登記總筆數', '=COUNTA(' + R + '!' + col['姓名'] + '2:' + col['姓名'] + ')'],
-    ['商品1 名稱', '=IFERROR(INDEX(' + R + '!' + col['商品1名稱'] + '2:' + col['商品1名稱'] + ',MATCH("?*",' + R + '!' + col['商品1名稱'] + '2:' + col['商品1名稱'] + ',0)),' + P + '!B2)'],
-    ['商品1 總數量', '=SUM(' + R + '!' + col['商品1數量'] + '2:' + col['商品1數量'] + ')'],
-    ['商品1 總金額', '=SUM(' + R + '!' + col['商品1小計'] + '2:' + col['商品1小計'] + ')'],
-    ['商品2 名稱', '=IFERROR(INDEX(' + R + '!' + col['商品2名稱'] + '2:' + col['商品2名稱'] + ',MATCH("?*",' + R + '!' + col['商品2名稱'] + '2:' + col['商品2名稱'] + ',0)),"")'],
-    ['商品2 總數量', '=SUM(' + R + '!' + col['商品2數量'] + '2:' + col['商品2數量'] + ')'],
-    ['商品2 總金額', '=SUM(' + R + '!' + col['商品2小計'] + '2:' + col['商品2小計'] + ')'],
-    ['商品總收入', '=SUM(' + R + '!' + col['商品總金額'] + '2:' + col['商品總金額'] + ')'],
+    ['商品名稱', '=IFERROR(' + P + '!B2,"")'],
+    ['商品總數量', '=SUM(' + R + '!' + col['數量'] + '2:' + col['數量'] + ')'],
+    ['商品總金額', '=SUM(' + R + '!' + col['商品總金額'] + '2:' + col['商品總金額'] + ')'],
     ['郵寄件數', '=COUNTIF(' + R + '!' + col['取貨方式'] + '2:' + col['取貨方式'] + ',"郵寄")'],
     ['郵寄費總額', '=SUM(' + R + '!' + col['郵寄費'] + '2:' + col['郵寄費'] + ')'],
     ['應收總金額', '=SUM(' + R + '!' + col['總金額'] + '2:' + col['總金額'] + ')'],
