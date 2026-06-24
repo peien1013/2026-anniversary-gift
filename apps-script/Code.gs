@@ -371,24 +371,33 @@ function formatDateTime_(d) {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('紀念品系統')
-    .addItem('初始化／重建工作表', 'setupSheet')
-    .addItem('重建統計頁', 'buildStats_')
+    .addItem('初始化（只建立缺少的工作表）', 'setupSheet')
+    .addSeparator()
+    .addItem('重建 登記資料表（會清空登記）', 'rebuildRecords')
+    .addItem('重建 統計頁', 'buildStats_')
     .addToUi();
 }
 
+/**
+ * 非破壞式初始化：
+ * - 系統設定 / 商品設定：只有「不存在」時才建立並填預設值，已存在則完全不動（不覆蓋你填的內容）。
+ * - 登記資料：欄位結構不符時才重建（會先確認）。
+ * - 統計：每次都安全重建（純公式，無資料）。
+ */
 function setupSheet() {
   setupSettings_();
   setupProducts_();
-  setupRecords_();
+  setupRecords_(false);
   buildStats_();
   try {
-    SpreadsheetApp.getActiveSpreadsheet().toast('工作表已建立／更新完成。', '紀念品系統', 5);
+    SpreadsheetApp.getActiveSpreadsheet().toast('工作表已就緒（已存在的設定不會被覆蓋）。', '紀念品系統', 5);
   } catch (e) {}
 }
 
 function setupSettings_() {
-  var sh = getSheet_(SHEET_SETTINGS);
-  sh.clear();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(SHEET_SETTINGS)) return; // 已存在就不動，避免覆蓋管理者設定
+  var sh = ss.insertSheet(SHEET_SETTINGS);
   sh.getRange(1, 1, 1, 3).setValues([['設定項目', '設定內容', '備註']]);
   var rows = [
     ['系統標題', '2026週年慶紀念品－吊飾', '前台頁首標題'],
@@ -410,8 +419,9 @@ function setupSettings_() {
 }
 
 function setupProducts_() {
-  var sh = getSheet_(SHEET_PRODUCTS);
-  sh.clear();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (ss.getSheetByName(SHEET_PRODUCTS)) return; // 已存在就不動，避免覆蓋你填的商品/圖片
+  var sh = ss.insertSheet(SHEET_PRODUCTS);
   sh.getRange(1, 1, 1, PRD_HEADERS.length).setValues([PRD_HEADERS]);
   var rows = [
     ['P01', '週年慶吊飾', '2026 週年慶限定紀念吊飾，精緻質感、值得收藏。', 150,
@@ -423,21 +433,66 @@ function setupProducts_() {
   sh.setFrozenRows(1);
 }
 
-function setupRecords_() {
+// 選單：強制重建登記資料表（會清空）
+function rebuildRecords() {
+  setupRecords_(true);
+  buildStats_();
+  try {
+    SpreadsheetApp.getActiveSpreadsheet().toast('登記資料表已重建。', '紀念品系統', 5);
+  } catch (e) {}
+}
+
+/**
+ * 登記資料表：
+ * - 不存在 → 建立。
+ * - 結構正確且非強制 → 保留資料，只補格式/下拉。
+ * - 結構不符（或強制）→ 若有資料先跳確認，然後清空＋移除多餘欄位＋寫新表頭。
+ */
+function setupRecords_(force) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SHEET_RECORDS);
-  if (sh && sh.getLastRow() > 1) {
-    // 已有資料：不清除，只確保表頭存在
-    sh.getRange(1, 1, 1, REC_HEADERS.length).setValues([REC_HEADERS]);
-  } else {
-    sh = getSheet_(SHEET_RECORDS);
-    sh.clear();
-    sh.getRange(1, 1, 1, REC_HEADERS.length).setValues([REC_HEADERS]);
+
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_RECORDS);
+    rebuildRecordsSheet_(sh);
+    return;
   }
+
+  if (recordsHeaderOk_(sh) && !force) {
+    applyRecordsFormat_(sh);
+    return;
+  }
+
+  if (sh.getLastRow() > 1) {
+    var ui = SpreadsheetApp.getUi();
+    var resp = ui.alert('重建「登記資料」',
+      '此動作會「清空登記資料表中現有的資料列」並套用最新欄位（單一商品、無小計）。\n\n若只是測試資料可直接清掉。要繼續嗎？',
+      ui.ButtonSet.YES_NO);
+    if (resp !== ui.Button.YES) {
+      ss.toast('已略過「登記資料」重建。', '紀念品系統', 4);
+      return;
+    }
+  }
+  rebuildRecordsSheet_(sh);
+}
+
+function recordsHeaderOk_(sh) {
+  if (sh.getLastColumn() !== REC_HEADERS.length) return false;
+  var cur = sh.getRange(1, 1, 1, REC_HEADERS.length).getValues()[0];
+  return REC_HEADERS.every(function (h, i) { return String(cur[i]).trim() === h; });
+}
+
+function rebuildRecordsSheet_(sh) {
+  sh.clear();
+  var extra = sh.getMaxColumns() - REC_HEADERS.length;
+  if (extra > 0) sh.deleteColumns(REC_HEADERS.length + 1, extra);
+  sh.getRange(1, 1, 1, REC_HEADERS.length).setValues([REC_HEADERS]);
+  applyRecordsFormat_(sh);
+}
+
+function applyRecordsFormat_(sh) {
   sh.getRange(1, 1, 1, REC_HEADERS.length).setFontWeight('bold').setBackground('#fde7c2');
   sh.setFrozenRows(1);
-
-  // 下拉選單：付款狀態(第23欄) / 取件寄送狀態(第24欄)
   var maxRows = Math.max(sh.getMaxRows() - 1, 1);
   var payCol = REC_HEADERS.indexOf('付款狀態') + 1;
   var shipCol = REC_HEADERS.indexOf('取件／寄送狀態') + 1;
