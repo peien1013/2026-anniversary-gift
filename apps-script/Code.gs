@@ -43,6 +43,7 @@ function doGet(e) {
   try {
     if (action === 'status')      out = handleStatus_();
     else if (action === 'submit') out = handleSubmit_(e.parameter.data);
+    else if (action === 'query')  out = handleQuery_(e.parameter.name);
     else                          out = { ok: false, error: '未知的請求' };
   } catch (err) {
     out = { ok: false, error: '系統忙碌中，請稍後再試。(' + err + ')' };
@@ -214,6 +215,51 @@ function handleSubmit_(dataStr) {
       successText: s['成功頁提示文字'] || '取件或寄送時間將另行通知。'
     }
   };
+}
+
+/* ====================== query：依姓名查詢登記 ====================== */
+function handleQuery_(nameParam) {
+  var name = (nameParam == null) ? '' : String(nameParam).trim();
+  if (!name) return { ok: false, error: '請輸入姓名。' };
+
+  var sh = getSheet_(SHEET_RECORDS);
+  var last = sh.getLastRow();
+  if (last < 2) return { ok: true, records: [] };
+
+  var vals = sh.getRange(2, 1, last - 1, REC_HEADERS.length).getValues();
+  var idx = {};
+  REC_HEADERS.forEach(function (h, i) { idx[h] = i; });
+  var tz = Session.getScriptTimeZone() || 'Asia/Taipei';
+
+  var out = [];
+  vals.forEach(function (r) {
+    var nm = String(r[idx['姓名']] || '').trim();
+    if (nm !== name) return;
+    if (String(r[idx['是否取消']] || '').trim() === '是') return; // 已取消不顯示
+    var t = r[idx['建立時間']];
+    out.push({
+      time:        (t instanceof Date) ? Utilities.formatDate(t, tz, 'yyyy/MM/dd HH:mm') : String(t || ''),
+      name:        nm,
+      productName: r[idx['商品名稱']],
+      price:       r[idx['單價']],
+      qty:         r[idx['數量']],
+      productTotal:r[idx['商品總金額']],
+      pickup:      r[idx['取貨方式']],
+      mailFee:     r[idx['郵寄費']],
+      grandTotal:  r[idx['總金額']],
+      recipient:   r[idx['收件人']],
+      phone:       r[idx['收件人電話']],
+      delivery:    r[idx['配送方式']],
+      cvsName:     r[idx['超商名稱']],
+      storeName:   r[idx['門市名稱']],
+      storeAddr:   r[idx['門市地址']],
+      zip:         r[idx['郵遞區號']],
+      address:     r[idx['完整收件地址']],
+      payStatus:   r[idx['付款狀態']],
+      shipStatus:  r[idx['取件／寄送狀態']]
+    });
+  });
+  return { ok: true, records: out };
 }
 
 /* ====================== 讀取設定 / 商品 ====================== */

@@ -38,6 +38,18 @@
   header h1{font-size:24px; margin:14px 0 4px; color:var(--gold-dark); letter-spacing:1px;}
   header .sub{font-size:15px; color:var(--muted);}
 
+  /* ===================== 登記/查詢 切換 ===================== */
+  .mode-switch{display:flex; gap:12px; margin:8px 0 2px;}
+  .mode-switch button{
+    flex:1; min-height:52px; font-size:18px; font-weight:800; border-radius:14px;
+    border:2px solid var(--line); background:#fffdf8; color:var(--muted); cursor:pointer;
+  }
+  .mode-switch button.active{
+    background:linear-gradient(180deg,var(--gold),var(--gold-dark)); color:#fff;
+    border-color:transparent; box-shadow:0 6px 16px rgba(168,122,24,.3);
+  }
+  .mode-switch button:active{transform:translateY(1px);}
+
   /* ===================== 進度條 ===================== */
   .progress-area{margin:18px 0 8px;}
   .progress-track{height:10px; background:#eaddc2; border-radius:999px; overflow:hidden;}
@@ -158,6 +170,12 @@
     <h1 id="title">2026週年慶紀念品－吊飾</h1>
     <div class="sub" id="subTitle"></div>
   </header>
+
+  <!-- 登記 / 查詢 切換 -->
+  <div class="mode-switch" id="modeSwitch" style="display:none;">
+    <button id="btnRegister" class="active" onclick="setMode('register')">📝 登記</button>
+    <button id="btnQuery" onclick="setMode('query')">🔍 查詢</button>
+  </div>
 
   <!-- 載入中 -->
   <div id="loadingCard" class="card center-msg">
@@ -291,6 +309,21 @@
     </div>
     <div id="successSummary"></div>
   </div>
+
+  <!-- 查詢區 -->
+  <div id="queryArea" style="display:none;">
+    <div class="card">
+      <h2 style="font-size:20px; margin:0 0 4px; color:var(--gold-dark);">🔍 查詢我的登記</h2>
+      <p class="hint">輸入你登記時填寫的姓名，查看登記內容與目前狀態。</p>
+      <label class="field-label" for="qName">姓名</label>
+      <input type="text" id="qName" placeholder="請輸入登記時的姓名" />
+      <div class="err-msg" id="errQ"></div>
+      <div class="nav-row">
+        <button class="btn btn-primary" id="qBtn" onclick="doQuery()">查詢</button>
+      </div>
+      <div id="queryResult"></div>
+    </div>
+  </div>
 </div>
 
 <!-- 圖片放大 -->
@@ -317,7 +350,11 @@ var STATE = {
   delivery: '',       // cvs / home
   cvs: '',            // 7-ELEVEN / 全家
   currentStep: 1,
-  submitting: false
+  submitting: false,
+  mode: 'register',   // register / query
+  open: false,        // 是否開放登記
+  closedReason: '',
+  submitted: false    // 已成功送出
 };
 
 /* ============================================================
@@ -354,15 +391,47 @@ function loadStatus() {
     if (!res || !res.ok) { showLoadError(res && res.error); return; }
     STATE.settings = res.settings;
     STATE.products = res.products || [];
+    STATE.open = !!res.open;
+    STATE.closedReason = res.closedReason || '';
     applySettings(res);
-    if (!res.open) { showClosed(res.closedReason); return; }
-    renderProducts();
-    renderPickupOptions();
-    restoreDraft();
+    if (STATE.open) {
+      renderProducts();
+      renderPickupOptions();
+      restoreDraft();
+      updateProgress();
+    }
+    document.getElementById('closedText').textContent = STATE.closedReason || '目前未開放登記。';
     document.getElementById('loadingCard').style.display = 'none';
-    document.getElementById('formArea').style.display = 'block';
-    updateProgress();
+    document.getElementById('modeSwitch').style.display = 'flex';
+    setMode('register');
   }, function () { showLoadError(); });
+}
+
+// 切換「登記 / 查詢」
+function setMode(m) {
+  STATE.mode = m;
+  var reg = (m === 'register');
+  document.getElementById('btnRegister').classList.toggle('active', reg);
+  document.getElementById('btnQuery').classList.toggle('active', !reg);
+
+  // 先全部收起
+  document.getElementById('formArea').style.display = 'none';
+  document.getElementById('closedCard').style.display = 'none';
+  document.getElementById('successCard').style.display = 'none';
+  document.getElementById('queryArea').style.display = 'none';
+
+  if (reg) {
+    if (STATE.submitted) {
+      document.getElementById('successCard').style.display = 'block';
+    } else if (STATE.open) {
+      document.getElementById('formArea').style.display = 'block';
+    } else {
+      document.getElementById('closedCard').style.display = 'block';
+    }
+  } else {
+    document.getElementById('queryArea').style.display = 'block';
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function applySettings(res) {
@@ -390,13 +459,6 @@ function showLoadError(msg) {
     '<div class="center-msg"><div class="big">⚠️</div><h2 style="color:var(--danger)">載入失敗</h2>' +
     '<p>' + (msg || '請檢查網路連線後，重新整理頁面再試一次。') + '</p>' +
     '<div class="nav-row"><button class="btn btn-primary" onclick="location.reload()">重新整理</button></div></div>';
-}
-
-function showClosed(reason) {
-  document.getElementById('loadingCard').style.display = 'none';
-  var c = document.getElementById('closedCard');
-  c.style.display = 'block';
-  document.getElementById('closedText').textContent = reason || '目前未開放登記。';
 }
 
 /* ============================================================
@@ -704,6 +766,7 @@ function submitForm() {
 }
 
 function showSuccess(sum) {
+  STATE.submitted = true;
   document.getElementById('formArea').style.display = 'none';
   var card = document.getElementById('successCard');
   card.style.display = 'block';
@@ -722,6 +785,64 @@ function showSuccess(sum) {
     document.getElementById('successSummary').innerHTML = rows;
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ============================================================
+   查詢
+   ============================================================ */
+function doQuery() {
+  var name = document.getElementById('qName').value.trim();
+  setErr('errQ', '');
+  document.getElementById('queryResult').innerHTML = '';
+  if (!name) { setErr('errQ', '請輸入姓名。'); return; }
+
+  var btn = document.getElementById('qBtn');
+  btn.disabled = true; btn.textContent = '查詢中…';
+
+  jsonp({ action: 'query', name: name }, function (res) {
+    btn.disabled = false; btn.textContent = '查詢';
+    if (!res || !res.ok) { setErr('errQ', (res && res.error) ? res.error : '查詢失敗，請稍後再試。'); return; }
+    renderQueryResult(res.records, name);
+  }, function (e) {
+    btn.disabled = false; btn.textContent = '查詢';
+    setErr('errQ', e === 'network' ? '網路連線中斷，請稍後再試。' : '查詢逾時，請稍後再試。');
+  });
+}
+
+function renderQueryResult(records, name) {
+  var box = document.getElementById('queryResult');
+  if (!records || !records.length) {
+    box.innerHTML = '<div class="announce" style="margin-top:16px;">查不到「' + escapeHtml(name) +
+      '」的登記資料。<br>請確認姓名是否與登記時相同。</div>';
+    return;
+  }
+  var html = '<div style="margin-top:16px; font-weight:700; color:var(--muted);">找到 ' + records.length + ' 筆登記：</div>';
+  records.forEach(function (r, i) {
+    var rows = '';
+    rows += reviewRow('登記時間', r.time || '-');
+    rows += reviewRow('登記人', r.name || '-');
+    rows += '<div class="sec-title">選購商品</div>';
+    rows += reviewRow((r.productName || '商品') + ' × ' + (r.qty || 0), 'NT$ ' + (r.productTotal || 0));
+    rows += '<div class="sec-title">取貨方式</div>';
+    rows += reviewRow('方式', r.pickup || '-');
+    if (String(r.pickup) === '郵寄') {
+      if (r.recipient) rows += reviewRow('收件人', r.recipient);
+      if (r.phone)     rows += reviewRow('收件人電話', r.phone);
+      if (r.delivery)  rows += reviewRow('配送方式', r.delivery);
+      if (r.cvsName)   rows += reviewRow('超商名稱', r.cvsName);
+      if (r.storeName) rows += reviewRow('門市名稱', r.storeName);
+      if (r.storeAddr) rows += reviewRow('門市地址', r.storeAddr);
+      if (r.address)   rows += reviewRow('收件地址', r.address);
+      if (r.zip)       rows += reviewRow('郵遞區號', r.zip);
+      if (r.mailFee)   rows += reviewRow('郵寄費', 'NT$ ' + r.mailFee);
+    }
+    rows += '<div class="review-grand"><span>總金額</span><b>NT$ ' + (r.grandTotal || 0) + '</b></div>';
+    rows += '<div class="sec-title">目前狀態</div>';
+    rows += reviewRow('付款狀態', r.payStatus || '未付款');
+    rows += reviewRow('取件／寄送狀態', r.shipStatus || '未處理');
+    html += '<div class="product" style="margin-top:14px;">' + rows + '</div>';
+  });
+  box.innerHTML = html;
 }
 
 /* ============================================================
