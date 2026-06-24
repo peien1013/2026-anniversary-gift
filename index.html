@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>2026週年慶紀念品－吊飾</title>
+<style>
+  /* ===================== 基礎 ===================== */
+  :root{
+    --gold:#c8962b; --gold-dark:#a87a18; --gold-soft:#fbecc9;
+    --bg:#fdf8ef; --card:#ffffff; --ink:#3a3128; --muted:#8a7d6a;
+    --line:#ecdfc6; --ok:#2e8b57; --danger:#c0392b;
+    --shadow:0 8px 28px rgba(120,90,20,.12);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:linear-gradient(180deg,#fdf8ef 0%,#f7eeda 100%);
+    color:var(--ink); font-size:17px; line-height:1.6;
+    min-height:100vh; padding:0 0 40px;
+  }
+  .wrap{max-width:560px; margin:0 auto; padding:0 16px;}
+
+  /* ===================== 頁首 ===================== */
+  header{
+    text-align:center; padding:26px 16px 10px;
+  }
+  header .badge-live{
+    display:inline-flex; align-items:center; gap:7px;
+    font-size:14px; font-weight:700; padding:5px 13px; border-radius:999px;
+    background:#f1e6cf; color:var(--muted);
+  }
+  header .badge-live .dot{width:9px;height:9px;border-radius:50%;background:#bbb;}
+  header .badge-live.open{background:#ffe9e6;color:#c0392b;}
+  header .badge-live.open .dot{background:#e74c3c; animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(231,76,60,.5)}70%{box-shadow:0 0 0 8px rgba(231,76,60,0)}100%{box-shadow:0 0 0 0 rgba(231,76,60,0)}}
+  header h1{font-size:24px; margin:14px 0 4px; color:var(--gold-dark); letter-spacing:1px;}
+  header .sub{font-size:15px; color:var(--muted);}
+
+  /* ===================== 進度條 ===================== */
+  .progress-area{margin:18px 0 8px;}
+  .progress-track{height:10px; background:#eaddc2; border-radius:999px; overflow:hidden;}
+  .progress-bar{height:100%; width:25%; background:linear-gradient(90deg,var(--gold),var(--gold-dark)); border-radius:999px; transition:width .45s ease;}
+  .progress-labels{display:flex; justify-content:space-between; margin-top:8px; font-size:13px; color:var(--muted);}
+  .progress-labels span{flex:1; text-align:center;}
+  .progress-labels span.active{color:var(--gold-dark); font-weight:700;}
+
+  /* ===================== 卡片 / 步驟 ===================== */
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    box-shadow:var(--shadow); padding:22px 18px; margin-top:16px;
+  }
+  .step{display:none; animation:slideIn .4s ease;}
+  .step.show{display:block;}
+  @keyframes slideIn{from{opacity:0; transform:translateY(14px);}to{opacity:1; transform:translateY(0);}}
+  .step h2{font-size:20px; margin:0 0 4px; color:var(--gold-dark);}
+  .step .hint{font-size:14px; color:var(--muted); margin:0 0 16px;}
+
+  label.field-label{display:block; font-weight:700; margin:14px 0 7px; font-size:16px;}
+  input[type=text], input[type=tel], select, textarea{
+    width:100%; font-size:17px; padding:13px 14px; border:1.5px solid var(--line);
+    border-radius:12px; background:#fffdf8; color:var(--ink); outline:none;
+  }
+  input:focus, select:focus, textarea:focus{border-color:var(--gold);}
+  textarea{min-height:70px; resize:vertical;}
+
+  .err-msg{color:var(--danger); font-size:14.5px; margin-top:8px; min-height:1px;}
+
+  /* ===================== 按鈕 ===================== */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    min-height:52px; font-size:18px; font-weight:700; border:none; border-radius:14px;
+    cursor:pointer; padding:0 22px; width:100%;
+  }
+  .btn-primary{background:linear-gradient(180deg,var(--gold),var(--gold-dark)); color:#fff; box-shadow:0 6px 16px rgba(168,122,24,.3);}
+  .btn-primary:active{transform:translateY(1px);}
+  .btn-primary:disabled{opacity:.5; box-shadow:none; cursor:not-allowed;}
+  .btn-ghost{background:#f3ead7; color:var(--gold-dark);}
+  .nav-row{display:flex; gap:12px; margin-top:22px;}
+  .nav-row .btn{flex:1;}
+
+  /* ===================== 商品 ===================== */
+  .product{border:1.5px solid var(--line); border-radius:16px; padding:16px; margin-bottom:16px; background:#fffdf8;}
+  .product .imgs{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;}
+  .product .imgs img{width:calc(50% - 4px); height:150px; object-fit:cover; border-radius:12px; cursor:zoom-in; border:1px solid var(--line); background:#f3ead7;}
+  .product .imgs.single img{width:100%; height:200px;}
+  .product .pname{font-size:19px; font-weight:800; color:var(--gold-dark);}
+  .product .pdesc{font-size:15px; color:var(--muted); margin:4px 0 10px;}
+  .product .price-row{display:flex; justify-content:space-between; align-items:center; font-size:16px;}
+  .product .price{font-weight:700;}
+  .qty-box{display:flex; align-items:center; gap:14px;}
+  .qty-btn{
+    width:46px; height:46px; border-radius:12px; border:none; font-size:26px; font-weight:700;
+    background:var(--gold-soft); color:var(--gold-dark); cursor:pointer; line-height:1;
+  }
+  .qty-btn:active{transform:scale(.94);}
+  .qty-num{min-width:36px; text-align:center; font-size:20px; font-weight:800;}
+  .subtotal{margin-top:10px; text-align:right; font-size:15px; color:var(--ink);}
+  .subtotal b{color:var(--gold-dark); font-size:17px;}
+
+  .total-box{
+    margin-top:6px; padding:16px; border-radius:14px; background:var(--gold-soft);
+    display:flex; justify-content:space-between; align-items:center; font-size:18px;
+  }
+  .total-box b{font-size:23px; color:var(--gold-dark);}
+
+  /* ===================== 取貨方式選項 ===================== */
+  .opt{
+    display:flex; align-items:center; gap:14px; border:2px solid var(--line);
+    border-radius:14px; padding:16px; margin-bottom:12px; cursor:pointer; background:#fffdf8;
+  }
+  .opt.sel{border-color:var(--gold); background:var(--gold-soft);}
+  .opt .radio{width:24px;height:24px;border-radius:50%;border:2.5px solid var(--gold); flex:0 0 auto; position:relative;}
+  .opt.sel .radio::after{content:""; position:absolute; inset:4px; border-radius:50%; background:var(--gold-dark);}
+  .opt .opt-title{font-size:17px; font-weight:700;}
+  .opt .opt-desc{font-size:13.5px; color:var(--muted);}
+  .opt.disabled{opacity:.45; cursor:not-allowed;}
+
+  .reveal{display:none; animation:slideIn .35s ease;}
+  .reveal.show{display:block;}
+  .notice{background:#eef6ef; border:1px solid #cfe6d4; color:#2e6b45; padding:12px 14px; border-radius:12px; font-size:15px; margin-top:6px;}
+
+  .chip-row{display:flex; gap:10px; flex-wrap:wrap;}
+  .chip{flex:1; min-width:120px; text-align:center; border:2px solid var(--line); border-radius:12px; padding:12px; font-weight:700; cursor:pointer; background:#fffdf8;}
+  .chip.sel{border-color:var(--gold); background:var(--gold-soft); color:var(--gold-dark);}
+
+  /* ===================== 確認頁 ===================== */
+  .review-row{display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px dashed var(--line); font-size:16px;}
+  .review-row .k{color:var(--muted);}
+  .review-row .v{font-weight:700; text-align:right; max-width:62%;}
+  .review-grand{margin-top:14px; padding:16px; border-radius:14px; background:var(--gold-soft); display:flex; justify-content:space-between; align-items:center;}
+  .review-grand b{font-size:24px; color:var(--gold-dark);}
+  .sec-title{font-weight:800; color:var(--gold-dark); margin:16px 0 4px; font-size:15px;}
+
+  /* ===================== 成功頁 / 載入 / 公告 ===================== */
+  .center-msg{text-align:center; padding:30px 10px;}
+  .center-msg .big{font-size:46px;}
+  .center-msg h2{color:var(--ok); font-size:24px; margin:12px 0 6px;}
+  .center-msg p{color:var(--muted); font-size:16px;}
+  .spinner{width:42px;height:42px;border:4px solid var(--gold-soft);border-top-color:var(--gold-dark);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .announce{background:#fff7e6; border:1px solid var(--line); border-radius:14px; padding:18px; font-size:16px; text-align:center; color:var(--ink);}
+
+  /* ===================== 圖片放大 ===================== */
+  .modal{position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:50; padding:20px;}
+  .modal.show{display:flex;}
+  .modal img{max-width:100%; max-height:90vh; border-radius:12px;}
+  .modal .close{position:absolute; top:16px; right:20px; color:#fff; font-size:34px; cursor:pointer;}
+
+  .footnote{text-align:center; color:var(--muted); font-size:13px; margin-top:22px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div id="liveBadge" class="badge-live"><span class="dot"></span><span id="liveText">確認中…</span></div>
+    <h1 id="title">2026週年慶紀念品－吊飾</h1>
+    <div class="sub" id="subTitle"></div>
+  </header>
+
+  <!-- 載入中 -->
+  <div id="loadingCard" class="card center-msg">
+    <div class="spinner"></div>
+    <p style="margin-top:14px;">資料載入中，請稍候…</p>
+  </div>
+
+  <!-- 登記關閉 / 公告 -->
+  <div id="closedCard" class="card" style="display:none;">
+    <div class="announce" id="closedText">目前未開放登記。</div>
+  </div>
+
+  <!-- 主表單 -->
+  <div id="formArea" style="display:none;">
+    <div class="progress-area">
+      <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-labels">
+        <span data-step="1" class="active">基本資料</span>
+        <span data-step="2">選購紀念品</span>
+        <span data-step="3">取貨方式</span>
+        <span data-step="4">確認送出</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <!-- Step 1 -->
+      <section class="step show" id="step1">
+        <h2>① 基本資料</h2>
+        <p class="hint">請填寫您的姓名。</p>
+        <label class="field-label" for="fName">姓名 <span style="color:var(--danger)">＊</span></label>
+        <input type="text" id="fName" placeholder="請輸入您的姓名" autocomplete="name" />
+        <div class="err-msg" id="err1"></div>
+        <div class="nav-row">
+          <button class="btn btn-primary" onclick="next(2)">下一步 →</button>
+        </div>
+      </section>
+
+      <!-- Step 2 -->
+      <section class="step" id="step2">
+        <h2>② 選購紀念品</h2>
+        <p class="hint">請選擇數量，至少選購一件才能繼續。</p>
+        <div id="productList"></div>
+        <div class="total-box">
+          <span>商品總金額</span><b id="productTotal">NT$ 0</b>
+        </div>
+        <div class="err-msg" id="err2"></div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" onclick="prev(1)">← 上一步</button>
+          <button class="btn btn-primary" onclick="next(3)">下一步 →</button>
+        </div>
+      </section>
+
+      <!-- Step 3 -->
+      <section class="step" id="step3">
+        <h2>③ 取貨方式</h2>
+        <p class="hint">請選擇您方便的取貨方式。</p>
+        <div id="pickupOpts"></div>
+
+        <!-- 高雄道場提示 -->
+        <div class="reveal" id="kaohsiungNote">
+          <div class="notice">實際可取件日期及時間將另行通知。</div>
+        </div>
+
+        <!-- 郵寄欄位 -->
+        <div class="reveal" id="mailFields">
+          <div class="notice" id="mailFeeNote">選擇郵寄將加收郵寄費 NT$ 100。</div>
+
+          <label class="field-label">收件人 <span style="color:var(--danger)">＊</span></label>
+          <input type="text" id="fRecipient" placeholder="收件人姓名" />
+
+          <label class="field-label">收件人電話 <span style="color:var(--danger)">＊</span></label>
+          <input type="tel" id="fPhone" placeholder="例如 0912345678" inputmode="numeric" />
+
+          <label class="field-label">配送方式 <span style="color:var(--danger)">＊</span></label>
+          <div class="chip-row" id="deliveryChips">
+            <div class="chip" data-dt="cvs" onclick="setDelivery('cvs')">超商店到店</div>
+            <div class="chip" data-dt="home" onclick="setDelivery('home')">宅配地址</div>
+          </div>
+
+          <!-- A 超商店到店 -->
+          <div class="reveal" id="cvsFields">
+            <label class="field-label">超商名稱 <span style="color:var(--danger)">＊</span></label>
+            <div class="chip-row" id="cvsChips">
+              <div class="chip" data-cvs="7-ELEVEN" onclick="setCvs('7-ELEVEN')">7-ELEVEN</div>
+              <div class="chip" data-cvs="全家" onclick="setCvs('全家')">全家</div>
+            </div>
+            <label class="field-label">門市名稱 <span style="color:var(--danger)">＊</span></label>
+            <input type="text" id="fStoreName" placeholder="例如：建國門市" />
+            <label class="field-label">門市地址（選填）</label>
+            <input type="text" id="fStoreAddr" placeholder="可不填" />
+          </div>
+
+          <!-- B 宅配地址 -->
+          <div class="reveal" id="homeFields">
+            <label class="field-label">完整收件地址 <span style="color:var(--danger)">＊</span></label>
+            <textarea id="fAddress" placeholder="請填寫完整地址"></textarea>
+            <label class="field-label">郵遞區號（選填）</label>
+            <input type="text" id="fZip" placeholder="可不填" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="err-msg" id="err3"></div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" onclick="prev(2)">← 上一步</button>
+          <button class="btn btn-primary" onclick="next(4)">下一步 →</button>
+        </div>
+      </section>
+
+      <!-- Step 4 -->
+      <section class="step" id="step4">
+        <h2>④ 確認資料</h2>
+        <p class="hint">請確認以下資料是否正確。</p>
+        <div id="reviewBox"></div>
+        <div class="err-msg" id="err4"></div>
+        <div class="nav-row">
+          <button class="btn btn-ghost" onclick="prev(3)">← 返回修改</button>
+          <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">確認送出</button>
+        </div>
+      </section>
+    </div>
+    <div class="footnote">系統由道場志工製作 · 資料僅供本次活動使用</div>
+  </div>
+
+  <!-- 成功頁 -->
+  <div id="successCard" class="card" style="display:none;">
+    <div class="center-msg">
+      <div class="big">🎉</div>
+      <h2>登記成功</h2>
+      <p>我們已收到您的紀念品購買登記。</p>
+      <p id="successText">取件或寄送時間將另行通知。</p>
+    </div>
+    <div id="successSummary"></div>
+  </div>
+</div>
+
+<!-- 圖片放大 -->
+<div class="modal" id="imgModal" onclick="closeModal()">
+  <span class="close">&times;</span>
+  <img id="modalImg" src="" alt="" />
+</div>
+
+<script>
+/* ============================================================
+   設定：把這裡換成你的 Apps Script /exec 網址
+   ============================================================ */
+var GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/請填入你的部署ID/exec';
+var LS_KEY = 'memorabilia2026_draft';
+
+/* ============================================================
+   狀態
+   ============================================================ */
+var STATE = {
+  settings: null,
+  products: [],
+  qty: {},            // {productId: 數量}
+  pickup: '',         // event / kaohsiung / mail
+  delivery: '',       // cvs / home
+  cvs: '',            // 7-ELEVEN / 全家
+  currentStep: 1,
+  submitting: false
+};
+
+/* ============================================================
+   JSONP
+   ============================================================ */
+function jsonp(params, cb, errCb) {
+  var cbName = 'jsonp_cb_' + Math.floor(Math.random() * 1e9);
+  var timer = setTimeout(function () {
+    cleanup(); if (errCb) errCb('timeout');
+  }, 20000);
+  function cleanup() {
+    clearTimeout(timer);
+    try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+    if (script.parentNode) script.parentNode.removeChild(script);
+  }
+  window[cbName] = function (data) { cleanup(); cb(data); };
+  var qs = 'callback=' + cbName;
+  for (var k in params) qs += '&' + k + '=' + encodeURIComponent(params[k]);
+  var script = document.createElement('script');
+  script.src = GOOGLE_SCRIPT_URL + '?' + qs;
+  script.onerror = function () { cleanup(); if (errCb) errCb('network'); };
+  document.body.appendChild(script);
+}
+
+/* ============================================================
+   啟動：載入狀態 + 商品
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', function () {
+  loadStatus();
+});
+
+function loadStatus() {
+  jsonp({ action: 'status' }, function (res) {
+    if (!res || !res.ok) { showLoadError(res && res.error); return; }
+    STATE.settings = res.settings;
+    STATE.products = res.products || [];
+    applySettings(res);
+    if (!res.open) { showClosed(res.closedReason); return; }
+    renderProducts();
+    renderPickupOptions();
+    restoreDraft();
+    document.getElementById('loadingCard').style.display = 'none';
+    document.getElementById('formArea').style.display = 'block';
+    updateProgress();
+  }, function () { showLoadError(); });
+}
+
+function applySettings(res) {
+  var s = res.settings || {};
+  if (s.systemTitle) document.getElementById('title').textContent = s.systemTitle;
+  var sub = [];
+  if (s.activityName && s.activityName !== s.systemTitle) sub.push(s.activityName);
+  if (s.activityDate) sub.push(s.activityDate);
+  document.getElementById('subTitle').textContent = sub.join('　·　');
+  document.getElementById('successText').textContent = s.successText || '取件或寄送時間將另行通知。';
+
+  var badge = document.getElementById('liveBadge');
+  var txt = document.getElementById('liveText');
+  if (res.open) { badge.className = 'badge-live open'; txt.textContent = '登記開放中'; }
+  else { badge.className = 'badge-live'; txt.textContent = '登記已關閉'; }
+
+  // 郵寄費提示
+  var fee = (s.mailFee != null) ? s.mailFee : 100;
+  var note = document.getElementById('mailFeeNote');
+  if (note) note.textContent = '選擇郵寄將加收郵寄費 NT$ ' + fee + '。';
+}
+
+function showLoadError(msg) {
+  document.getElementById('loadingCard').innerHTML =
+    '<div class="center-msg"><div class="big">⚠️</div><h2 style="color:var(--danger)">載入失敗</h2>' +
+    '<p>' + (msg || '請檢查網路連線後，重新整理頁面再試一次。') + '</p>' +
+    '<div class="nav-row"><button class="btn btn-primary" onclick="location.reload()">重新整理</button></div></div>';
+}
+
+function showClosed(reason) {
+  document.getElementById('loadingCard').style.display = 'none';
+  var c = document.getElementById('closedCard');
+  c.style.display = 'block';
+  document.getElementById('closedText').textContent = reason || '目前未開放登記。';
+}
+
+/* ============================================================
+   商品渲染
+   ============================================================ */
+function renderProducts() {
+  var box = document.getElementById('productList');
+  box.innerHTML = '';
+  STATE.products.forEach(function (p) {
+    if (STATE.qty[p.id] == null) STATE.qty[p.id] = 0;
+    var div = document.createElement('div');
+    div.className = 'product';
+
+    var imgsHtml = '';
+    if (p.images && p.images.length) {
+      var cls = p.images.length === 1 ? 'imgs single' : 'imgs';
+      imgsHtml = '<div class="' + cls + '">' +
+        p.images.map(function (u) {
+          return '<img src="' + u + '" alt="' + escapeHtml(p.name) + '" onclick="openModal(\'' + u + '\')" onerror="this.style.display=\'none\'" />';
+        }).join('') + '</div>';
+    }
+
+    var disabled = p.canBuy ? '' : ' disabled';
+    div.innerHTML =
+      imgsHtml +
+      '<div class="pname">' + escapeHtml(p.name) + '</div>' +
+      (p.desc ? '<div class="pdesc">' + escapeHtml(p.desc) + '</div>' : '') +
+      '<div class="price-row"><span class="price">單價 NT$ ' + p.price + '</span>' +
+        '<div class="qty-box">' +
+          '<button class="qty-btn" onclick="changeQty(\'' + p.id + '\',-1)"' + disabled + '>－</button>' +
+          '<span class="qty-num" id="qty_' + p.id + '">' + STATE.qty[p.id] + '</span>' +
+          '<button class="qty-btn" onclick="changeQty(\'' + p.id + '\',1)"' + disabled + '>＋</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="subtotal">小計：<b id="sub_' + p.id + '">NT$ ' + (p.price * STATE.qty[p.id]) + '</b></div>' +
+      (p.canBuy ? '' : '<div class="pdesc" style="color:var(--danger)">此商品目前無法購買</div>');
+    box.appendChild(div);
+  });
+  updateTotals();
+}
+
+function changeQty(id, delta) {
+  var p = findProduct(id);
+  if (!p || !p.canBuy) return;
+  var q = (STATE.qty[id] || 0) + delta;
+  if (q < 0) q = 0;
+  if (p.maxQty > 0 && q > p.maxQty) { q = p.maxQty; }
+  STATE.qty[id] = q;
+  document.getElementById('qty_' + id).textContent = q;
+  document.getElementById('sub_' + id).textContent = 'NT$ ' + (p.price * q);
+  updateTotals();
+  saveDraft();
+}
+
+function updateTotals() {
+  document.getElementById('productTotal').textContent = 'NT$ ' + productTotal();
+}
+
+function productTotal() {
+  var t = 0;
+  STATE.products.forEach(function (p) { t += p.price * (STATE.qty[p.id] || 0); });
+  return t;
+}
+
+function mailFee() {
+  return (STATE.pickup === 'mail') ? ((STATE.settings && STATE.settings.mailFee != null) ? STATE.settings.mailFee : 100) : 0;
+}
+
+function grandTotal() { return productTotal() + mailFee(); }
+
+function findProduct(id) {
+  for (var i = 0; i < STATE.products.length; i++) if (STATE.products[i].id === id) return STATE.products[i];
+  return null;
+}
+
+/* ============================================================
+   取貨方式
+   ============================================================ */
+function renderPickupOptions() {
+  var opts = [
+    { key: 'event',     title: '週年慶當日取件', desc: '活動當天現場領取', open: STATE.settings.pickup.event },
+    { key: 'kaohsiung', title: '提早至高雄道場取件', desc: '日期時間將另行通知', open: STATE.settings.pickup.kaohsiung },
+    { key: 'mail',      title: '郵寄', desc: '加收郵寄費 NT$ ' + (STATE.settings.mailFee != null ? STATE.settings.mailFee : 100), open: STATE.settings.pickup.mail }
+  ];
+  var box = document.getElementById('pickupOpts');
+  box.innerHTML = '';
+  opts.forEach(function (o) {
+    var div = document.createElement('div');
+    div.className = 'opt' + (o.open ? '' : ' disabled');
+    div.innerHTML = '<div class="radio"></div><div><div class="opt-title">' + o.title + '</div><div class="opt-desc">' + o.desc + '</div></div>';
+    if (o.open) div.onclick = function () { setPickup(o.key); };
+    div.id = 'opt_' + o.key;
+    box.appendChild(div);
+  });
+}
+
+function setPickup(key) {
+  STATE.pickup = key;
+  document.querySelectorAll('#pickupOpts .opt').forEach(function (el) { el.classList.remove('sel'); });
+  var sel = document.getElementById('opt_' + key);
+  if (sel) sel.classList.add('sel');
+
+  show('kaohsiungNote', key === 'kaohsiung');
+  show('mailFields', key === 'mail');
+
+  if (key !== 'mail') {
+    // 清掉郵寄殘留
+    STATE.delivery = ''; STATE.cvs = '';
+    show('cvsFields', false); show('homeFields', false);
+    document.querySelectorAll('#deliveryChips .chip').forEach(function (c) { c.classList.remove('sel'); });
+  }
+  updateTotals();
+  saveDraft();
+}
+
+function setDelivery(dt) {
+  STATE.delivery = dt;
+  document.querySelectorAll('#deliveryChips .chip').forEach(function (c) {
+    c.classList.toggle('sel', c.getAttribute('data-dt') === dt);
+  });
+  show('cvsFields', dt === 'cvs');
+  show('homeFields', dt === 'home');
+  // 切換配送方式時，清除另一種的殘留資料
+  if (dt === 'cvs') { document.getElementById('fAddress').value = ''; document.getElementById('fZip').value = ''; }
+  else { STATE.cvs = ''; document.querySelectorAll('#cvsChips .chip').forEach(function (c) { c.classList.remove('sel'); });
+         document.getElementById('fStoreName').value = ''; document.getElementById('fStoreAddr').value = ''; }
+  saveDraft();
+}
+
+function setCvs(name) {
+  STATE.cvs = name;
+  document.querySelectorAll('#cvsChips .chip').forEach(function (c) {
+    c.classList.toggle('sel', c.getAttribute('data-cvs') === name);
+  });
+  saveDraft();
+}
+
+/* ============================================================
+   步驟切換 + 驗證
+   ============================================================ */
+function show(id, on) { document.getElementById(id).classList.toggle('show', !!on); }
+
+function gotoStep(n) {
+  STATE.currentStep = n;
+  for (var i = 1; i <= 4; i++) {
+    document.getElementById('step' + i).classList.toggle('show', i === n);
+  }
+  updateProgress();
+  if (n === 4) renderReview();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateProgress() {
+  var pct = STATE.currentStep * 25;
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.querySelectorAll('.progress-labels span').forEach(function (el) {
+    el.classList.toggle('active', Number(el.getAttribute('data-step')) <= STATE.currentStep);
+  });
+}
+
+function setErr(id, msg) { document.getElementById(id).textContent = msg || ''; }
+
+function next(target) {
+  if (target === 2) { if (!validateStep1()) return; }
+  if (target === 3) { if (!validateStep2()) return; }
+  if (target === 4) { if (!validateStep3()) return; }
+  gotoStep(target);
+}
+function prev(target) { gotoStep(target); }
+
+function validateStep1() {
+  var name = document.getElementById('fName').value.trim();
+  if (!name) { setErr('err1', '請填寫姓名。'); return false; }
+  setErr('err1', ''); saveDraft(); return true;
+}
+
+function validateStep2() {
+  if (productTotal() <= 0 || allQtyZero()) { setErr('err2', '請至少選購一件商品。'); return false; }
+  setErr('err2', ''); return true;
+}
+function allQtyZero() {
+  for (var i = 0; i < STATE.products.length; i++) if ((STATE.qty[STATE.products[i].id] || 0) > 0) return false;
+  return true;
+}
+
+function validateStep3() {
+  if (!STATE.pickup) { setErr('err3', '請選擇取貨方式。'); return false; }
+  if (STATE.pickup === 'mail') {
+    if (!document.getElementById('fRecipient').value.trim()) { setErr('err3', '請填寫收件人。'); return false; }
+    var phone = document.getElementById('fPhone').value.trim();
+    if (!phone) { setErr('err3', '請填寫收件人電話。'); return false; }
+    if (!phoneLoose(phone)) { setErr('err3', '收件人電話格式看起來怪怪的，請再確認。'); return false; }
+    if (!STATE.delivery) { setErr('err3', '請選擇配送方式。'); return false; }
+    if (STATE.delivery === 'cvs') {
+      if (!STATE.cvs) { setErr('err3', '請選擇超商名稱。'); return false; }
+      if (!document.getElementById('fStoreName').value.trim()) { setErr('err3', '請填寫門市名稱。'); return false; }
+    } else if (STATE.delivery === 'home') {
+      if (!document.getElementById('fAddress').value.trim()) { setErr('err3', '請填寫完整收件地址。'); return false; }
+    }
+  }
+  setErr('err3', ''); saveDraft(); return true;
+}
+
+function phoneLoose(p) {
+  var d = (p || '').replace(/[^0-9]/g, '');
+  return d.length >= 8 && d.length <= 15;
+}
+
+/* ============================================================
+   確認頁
+   ============================================================ */
+function renderReview() {
+  var s = STATE.settings;
+  var rows = '';
+  rows += reviewRow('姓名', document.getElementById('fName').value.trim());
+
+  rows += '<div class="sec-title">選購商品</div>';
+  STATE.products.forEach(function (p) {
+    var q = STATE.qty[p.id] || 0;
+    if (q > 0) rows += reviewRow(p.name + ' × ' + q, 'NT$ ' + (p.price * q));
+  });
+  rows += reviewRow('商品總金額', 'NT$ ' + productTotal());
+
+  rows += '<div class="sec-title">取貨方式</div>';
+  var pickupLabel = { event: '週年慶當日取件', kaohsiung: '提早至高雄道場取件', mail: '郵寄' }[STATE.pickup];
+  rows += reviewRow('方式', pickupLabel);
+
+  if (STATE.pickup === 'mail') {
+    rows += reviewRow('收件人', document.getElementById('fRecipient').value.trim());
+    rows += reviewRow('收件人電話', document.getElementById('fPhone').value.trim());
+    rows += reviewRow('配送方式', STATE.delivery === 'cvs' ? '超商店到店' : '宅配地址');
+    if (STATE.delivery === 'cvs') {
+      rows += reviewRow('超商名稱', STATE.cvs);
+      rows += reviewRow('門市名稱', document.getElementById('fStoreName').value.trim());
+      var sa = document.getElementById('fStoreAddr').value.trim();
+      if (sa) rows += reviewRow('門市地址', sa);
+    } else {
+      rows += reviewRow('收件地址', document.getElementById('fAddress').value.trim());
+      var zip = document.getElementById('fZip').value.trim();
+      if (zip) rows += reviewRow('郵遞區號', zip);
+    }
+    rows += reviewRow('郵寄費', 'NT$ ' + mailFee());
+  }
+
+  rows += '<div class="review-grand"><span>應付總金額</span><b>NT$ ' + grandTotal() + '</b></div>';
+  document.getElementById('reviewBox').innerHTML = rows;
+}
+
+function reviewRow(k, v) {
+  return '<div class="review-row"><span class="k">' + escapeHtml(k) + '</span><span class="v">' + escapeHtml(String(v)) + '</span></div>';
+}
+
+/* ============================================================
+   送出（JSONP，防重複）
+   ============================================================ */
+function submitForm() {
+  if (STATE.submitting) return;
+  setErr('err4', '');
+  var btn = document.getElementById('submitBtn');
+  STATE.submitting = true;
+  btn.disabled = true;
+  btn.textContent = '送出中…';
+
+  var items = [];
+  STATE.products.forEach(function (p) {
+    var q = STATE.qty[p.id] || 0;
+    if (q > 0) items.push({ id: p.id, qty: q });
+  });
+
+  var payload = {
+    name: document.getElementById('fName').value.trim(),
+    items: items,
+    pickup: STATE.pickup
+  };
+  if (STATE.pickup === 'mail') {
+    payload.recipient = document.getElementById('fRecipient').value.trim();
+    payload.phone = document.getElementById('fPhone').value.trim();
+    payload.deliveryType = STATE.delivery;
+    if (STATE.delivery === 'cvs') {
+      payload.cvsName = STATE.cvs;
+      payload.storeName = document.getElementById('fStoreName').value.trim();
+      payload.storeAddr = document.getElementById('fStoreAddr').value.trim();
+    } else {
+      payload.address = document.getElementById('fAddress').value.trim();
+      payload.zip = document.getElementById('fZip').value.trim();
+    }
+  }
+
+  jsonp({ action: 'submit', data: JSON.stringify(payload) }, function (res) {
+    if (res && res.ok) {
+      clearDraft();
+      showSuccess(res.summary);
+    } else {
+      STATE.submitting = false;
+      btn.disabled = false;
+      btn.textContent = '確認送出';
+      setErr('err4', (res && res.error) ? res.error : '送出失敗，請稍後再試。');
+    }
+  }, function (e) {
+    STATE.submitting = false;
+    btn.disabled = false;
+    btn.textContent = '確認送出';
+    setErr('err4', e === 'network' ? '網路連線中斷，請稍後再試一次。' : '送出逾時，請稍後再試。');
+  });
+}
+
+function showSuccess(sum) {
+  document.getElementById('formArea').style.display = 'none';
+  var card = document.getElementById('successCard');
+  card.style.display = 'block';
+  if (sum) {
+    document.getElementById('successText').textContent = sum.successText || '取件或寄送時間將另行通知。';
+    var rows = '';
+    rows += reviewRow('姓名', sum.name);
+    rows += '<div class="sec-title">選購商品</div>';
+    (sum.items || []).forEach(function (it) {
+      rows += reviewRow(it.name + ' × ' + it.qty, 'NT$ ' + it.subtotal);
+    });
+    rows += reviewRow('商品金額', 'NT$ ' + sum.productTotal);
+    rows += reviewRow('取貨方式', sum.pickup);
+    if (sum.mailFee > 0) rows += reviewRow('郵寄費', 'NT$ ' + sum.mailFee);
+    rows += '<div class="review-grand"><span>總金額</span><b>NT$ ' + sum.grandTotal + '</b></div>';
+    document.getElementById('successSummary').innerHTML = rows;
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ============================================================
+   localStorage 暫存
+   ============================================================ */
+function saveDraft() {
+  try {
+    var draft = {
+      name: document.getElementById('fName') ? document.getElementById('fName').value : '',
+      qty: STATE.qty, pickup: STATE.pickup, delivery: STATE.delivery, cvs: STATE.cvs,
+      recipient: val('fRecipient'), phone: val('fPhone'),
+      storeName: val('fStoreName'), storeAddr: val('fStoreAddr'),
+      address: val('fAddress'), zip: val('fZip')
+    };
+    localStorage.setItem(LS_KEY, JSON.stringify(draft));
+  } catch (e) {}
+}
+function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+function restoreDraft() {
+  var raw;
+  try { raw = localStorage.getItem(LS_KEY); } catch (e) { return; }
+  if (!raw) return;
+  var d;
+  try { d = JSON.parse(raw); } catch (e) { return; }
+  if (d.name) document.getElementById('fName').value = d.name;
+  if (d.qty) { STATE.qty = d.qty; renderProducts(); }
+  if (d.recipient) document.getElementById('fRecipient').value = d.recipient;
+  if (d.phone) document.getElementById('fPhone').value = d.phone;
+  if (d.storeName) document.getElementById('fStoreName').value = d.storeName;
+  if (d.storeAddr) document.getElementById('fStoreAddr').value = d.storeAddr;
+  if (d.address) document.getElementById('fAddress').value = d.address;
+  if (d.zip) document.getElementById('fZip').value = d.zip;
+  if (d.pickup) setPickup(d.pickup);
+  if (d.delivery) setDelivery(d.delivery);
+  if (d.cvs) setCvs(d.cvs);
+}
+
+function clearDraft() { try { localStorage.removeItem(LS_KEY); } catch (e) {} }
+
+// 表單輸入即時存草稿
+document.addEventListener('input', function (e) {
+  if (e.target && e.target.tagName && /INPUT|TEXTAREA/.test(e.target.tagName)) saveDraft();
+});
+
+/* ============================================================
+   圖片放大 + 工具
+   ============================================================ */
+function openModal(url) {
+  document.getElementById('modalImg').src = url;
+  document.getElementById('imgModal').classList.add('show');
+}
+function closeModal() { document.getElementById('imgModal').classList.remove('show'); }
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+</script>
+</body>
+</html>
