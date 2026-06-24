@@ -208,8 +208,6 @@
         <label class="field-label" for="fName">姓名 <span style="color:var(--danger)">＊</span></label>
         <input type="text" id="fName" placeholder="請輸入您的姓名" autocomplete="name" />
         <div class="err-msg" id="err1"></div>
-        <label class="field-label" for="fNote">備註（選填）</label>
-        <textarea id="fNote" placeholder="想跟主辦說的話，可不填"></textarea>
         <div class="nav-row">
           <button class="btn btn-primary" onclick="next(2)">下一步 →</button>
         </div>
@@ -291,6 +289,8 @@
         <h2>④ 確認資料</h2>
         <p class="hint">請確認以下資料是否正確。</p>
         <div id="reviewBox"></div>
+        <label class="field-label" for="fNote" style="margin-top:18px;">備註（選填）</label>
+        <textarea id="fNote" placeholder="想跟主辦說的話，可不填"></textarea>
         <div class="err-msg" id="err4"></div>
         <div class="nav-row">
           <button class="btn btn-ghost" onclick="prev(3)">← 返回修改</button>
@@ -704,9 +704,6 @@ function renderReview() {
     }
     rows += reviewRow('郵寄費', 'NT$ ' + mailFee());
   }
-
-  var noteVal = document.getElementById('fNote').value.trim();
-  if (noteVal) rows += reviewRow('備註', noteVal);
 
   rows += '<div class="review-grand"><span>應付總金額</span><b>NT$ ' + grandTotal() + '</b></div>';
   document.getElementById('reviewBox').innerHTML = rows;
