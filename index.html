@@ -805,21 +805,43 @@ function doQuery() {
   jsonp({ action: 'query', name: name }, function (res) {
     btn.disabled = false; btn.textContent = '查詢';
     if (!res || !res.ok) { setErr('errQ', (res && res.error) ? res.error : '查詢失敗，請稍後再試。'); return; }
-    renderQueryResult(res.records, name);
+    renderQueryResult(res, name);
   }, function (e) {
     btn.disabled = false; btn.textContent = '查詢';
     setErr('errQ', e === 'network' ? '網路連線中斷，請稍後再試。' : '查詢逾時，請稍後再試。');
   });
 }
 
-function renderQueryResult(records, name) {
+function renderQueryResult(res, name) {
   var box = document.getElementById('queryResult');
-  if (!records || !records.length) {
+  var records = (res && res.records) ? res.records : [];
+  var member = (res && res.member) ? res.member : null;
+
+  if (!records.length && !member) {
     box.innerHTML = '<div class="announce" style="margin-top:16px;">查不到「' + escapeHtml(name) +
-      '」的登記資料。<br>請確認姓名是否與登記時相同。</div>';
+      '」的資料。<br>請確認姓名是否與登記時相同。</div>';
     return;
   }
-  var html = '<div style="margin-top:16px; font-weight:700; color:var(--muted);">找到 ' + records.length + ' 筆登記：</div>';
+
+  var html = '';
+
+  // 🎁 會員免費紀念品
+  var freeQty = member ? (member.freeQty || 0) : 0;
+  if (member) {
+    var mrows = '';
+    mrows += reviewRow('免費紀念品', freeQty + ' 個');
+    if (member.proxy) mrows += reviewRow('含代領', member.proxy);
+    mrows += reviewRow('領取狀態', member.taken || '未領取');
+    if (member.note) mrows += reviewRow('備註', member.note);
+    html += '<div class="sec-title" style="margin-top:16px;">🎁 會員免費紀念品</div>';
+    html += '<div class="product">' + mrows + '</div>';
+  }
+
+  // 🛍 額外購買
+  var purchasedQty = (res && res.purchasedQty) ? res.purchasedQty : 0;
+  if (records.length) {
+    html += '<div class="sec-title" style="margin-top:8px;">🛍 額外購買（' + records.length + ' 筆）</div>';
+  }
   records.forEach(function (r, i) {
     var rows = '';
     rows += reviewRow('登記時間', r.time || '-');
@@ -846,6 +868,18 @@ function renderQueryResult(records, name) {
     rows += reviewRow('取件／寄送狀態', r.shipStatus || '未處理');
     html += '<div class="product" style="margin-top:14px;">' + rows + '</div>';
   });
+
+  // 合計：免費 + 購買
+  var totalQty = freeQty + purchasedQty;
+  if (totalQty > 0) {
+    html += '<div class="total-box" style="margin-top:16px;">' +
+      '<span>這次共會拿到 / 寄出</span><b>' + totalQty + ' 個</b></div>';
+    if (freeQty > 0 && purchasedQty > 0) {
+      html += '<div style="text-align:right; color:var(--muted); font-size:14px; margin-top:6px;">' +
+        '（會員免費 ' + freeQty + ' 個 ＋ 額外購買 ' + purchasedQty + ' 個）</div>';
+    }
+  }
+
   box.innerHTML = html;
 }
 
