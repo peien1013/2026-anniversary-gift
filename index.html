@@ -812,73 +812,54 @@ function doQuery() {
   });
 }
 
+function countNames(s) {
+  if (!s) return 0;
+  return String(s).split(/[、,，;；\s]+/).filter(function (x) { return x.trim(); }).length;
+}
+
 function renderQueryResult(res, name) {
   var box = document.getElementById('queryResult');
   var records = (res && res.records) ? res.records : [];
-  var member = (res && res.member) ? res.member : null;
 
-  if (!records.length && !member) {
+  if (!records.length) {
     box.innerHTML = '<div class="announce" style="margin-top:16px;">查不到「' + escapeHtml(name) +
       '」的資料。<br>請確認姓名是否與登記時相同。</div>';
     return;
   }
 
-  var html = '';
+  var html = '<div style="margin-top:16px; font-weight:700; color:var(--muted);">找到 ' +
+    records.length + ' 筆登記：</div>';
 
-  // 🎁 會員免費紀念品
-  var freeQty = member ? (member.freeQty || 0) : 0;
-  if (member) {
-    var mrows = '';
-    mrows += reviewRow('免費紀念品', freeQty + ' 個');
-    if (member.proxy) mrows += reviewRow('含代領', member.proxy);
-    mrows += reviewRow('領取狀態', member.taken || '未領取');
-    if (member.note) mrows += reviewRow('備註', member.note);
-    html += '<div class="sec-title" style="margin-top:16px;">🎁 會員免費紀念品</div>';
-    html += '<div class="product">' + mrows + '</div>';
-  }
+  records.forEach(function (r) {
+    var qty = Number(r.qty) || 0;
+    var isMail = String(r.pickup) === '郵寄';
+    var proxyNames = (r.proxy || '').trim();          // 代領家人（管理者手填）
+    var proxyCount = countNames(proxyNames);
 
-  // 🛍 額外購買
-  var purchasedQty = (res && res.purchasedQty) ? res.purchasedQty : 0;
-  if (records.length) {
-    html += '<div class="sec-title" style="margin-top:8px;">🛍 額外購買（' + records.length + ' 筆）</div>';
-  }
-  records.forEach(function (r, i) {
     var rows = '';
     rows += reviewRow('登記時間', r.time || '-');
-    rows += reviewRow('登記人', r.name || '-');
-    rows += '<div class="sec-title">選購商品</div>';
-    rows += reviewRow((r.productName || '商品') + ' × ' + (r.qty || 0), 'NT$ ' + (r.productTotal || 0));
-    rows += '<div class="sec-title">取貨方式</div>';
-    rows += reviewRow('方式', r.pickup || '-');
-    if (String(r.pickup) === '郵寄') {
-      if (r.recipient) rows += reviewRow('收件人', r.recipient);
-      if (r.phone)     rows += reviewRow('收件人電話', r.phone);
-      if (r.delivery)  rows += reviewRow('配送方式', r.delivery);
-      if (r.cvsName)   rows += reviewRow('超商名稱', r.cvsName);
-      if (r.storeName) rows += reviewRow('門市名稱', r.storeName);
-      if (r.storeAddr) rows += reviewRow('門市地址', r.storeAddr);
-      if (r.address)   rows += reviewRow('收件地址', r.address);
-      if (r.zip)       rows += reviewRow('郵遞區號', r.zip);
-      if (r.mailFee)   rows += reviewRow('郵寄費', 'NT$ ' + r.mailFee);
+
+    rows += '<div class="sec-title">🛍 額外購買</div>';
+    rows += reviewRow((r.productName || '商品') + ' × ' + qty, 'NT$ ' + (r.productTotal || 0));
+    rows += reviewRow('取貨方式', r.pickup || '-');
+
+    // 代領 / 郵寄內容：只有郵寄、且管理者有填代領家人時才顯示
+    if (isMail && proxyNames) {
+      rows += '<div class="sec-title">🎁 會員紀念品（代領家人）</div>';
+      rows += reviewRow(proxyNames, proxyCount + ' 個');
+      rows += '<div class="total-box" style="margin-top:10px;">' +
+        '<span>📦 郵寄內容共</span><b>' + (proxyCount + qty) + ' 個</b></div>';
+      rows += '<div style="text-align:right; color:var(--muted); font-size:13.5px; margin-top:5px;">' +
+        '會員 ' + proxyCount + ' 個 ＋ 額外購買 ' + qty + ' 個</div>';
     }
-    if (r.note) rows += reviewRow('備註', r.note);
-    rows += '<div class="review-grand"><span>總金額</span><b>NT$ ' + (r.grandTotal || 0) + '</b></div>';
-    rows += '<div class="sec-title">目前狀態</div>';
+
+    rows += reviewRow('應付總金額', 'NT$ ' + (r.grandTotal || 0));
     rows += reviewRow('付款狀態', r.payStatus || '未付款');
     rows += reviewRow('取件／寄送狀態', r.shipStatus || '未處理');
+    if (r.note) rows += reviewRow('備註', r.note);
+
     html += '<div class="product" style="margin-top:14px;">' + rows + '</div>';
   });
-
-  // 合計：免費 + 購買
-  var totalQty = freeQty + purchasedQty;
-  if (totalQty > 0) {
-    html += '<div class="total-box" style="margin-top:16px;">' +
-      '<span>這次共會拿到 / 寄出</span><b>' + totalQty + ' 個</b></div>';
-    if (freeQty > 0 && purchasedQty > 0) {
-      html += '<div style="text-align:right; color:var(--muted); font-size:14px; margin-top:6px;">' +
-        '（會員免費 ' + freeQty + ' 個 ＋ 額外購買 ' + purchasedQty + ' 個）</div>';
-    }
-  }
 
   box.innerHTML = html;
 }

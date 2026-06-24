@@ -13,7 +13,6 @@
 var SHEET_SETTINGS = '系統設定';
 var SHEET_PRODUCTS = '商品設定';
 var SHEET_RECORDS  = '登記資料';
-var SHEET_MEMBERS  = '會員名單';
 var SHEET_STATS    = '統計';
 
 // 登記資料欄位順序（用「位置」讀寫，新增欄位請放最後）
@@ -24,7 +23,7 @@ var REC_HEADERS = [
   '商品總金額', '取貨方式', '郵寄費', '總金額',
   '收件人', '收件人電話', '配送方式',
   '超商名稱', '門市名稱', '門市地址', '郵遞區號', '完整收件地址',
-  '付款狀態', '取件／寄送狀態', '管理備註', '是否取消', '備註'
+  '付款狀態', '取件／寄送狀態', '管理備註', '是否取消', '備註', '代領家人'
 ];
 
 var PRD_HEADERS = [
@@ -35,10 +34,6 @@ var PRD_HEADERS = [
 
 var PAY_STATUS  = ['未付款', '已付款', '不需付款', '已退款'];
 var SHIP_STATUS = ['未處理', '待取件', '已取件', '待寄出', '已寄出', '已完成'];
-
-// 會員名單（會員免費紀念品）；管理者手動維護
-var MEM_HEADERS = ['會員姓名', '免費數量', '已領取', '代領明細', '備註'];
-var MEM_TAKEN   = ['未領取', '已領取', '已寄出'];
 
 /* ====================== Web App 入口（JSONP） ====================== */
 function doGet(e) {
@@ -202,7 +197,7 @@ function handleSubmit_(dataStr) {
       productTotal, pickupLabel, mailFee, grandTotal,
       recipient, phone, deliveryType,
       cvsName, storeName, storeAddr, zip, address,
-      '未付款', '未處理', '', '', note
+      '未付款', '未處理', '', '', note, ''  // 最後一欄「代領家人」：留空，由管理者手動填
     ];
     sh.getRange(sh.getLastRow() + 1, 1, 1, row.length).setValues([row]);
     SpreadsheetApp.flush();
@@ -232,9 +227,7 @@ function handleQuery_(nameParam) {
 
   var tz = Session.getScriptTimeZone() || 'Asia/Taipei';
 
-  // --- 額外購買（登記資料）---
   var out = [];
-  var purchasedQty = 0;
   var sh = getSheet_(SHEET_RECORDS);
   var last = sh.getLastRow();
   if (last >= 2) {
@@ -246,7 +239,6 @@ function handleQuery_(nameParam) {
       if (nm !== name) return;
       if (String(r[idx['是否取消']] || '').trim() === '是') return; // 已取消不顯示
       var t = r[idx['建立時間']];
-      purchasedQty += toNumber_(r[idx['數量']], 0);
       out.push({
         time:        (t instanceof Date) ? Utilities.formatDate(t, tz, 'yyyy/MM/dd HH:mm') : String(t || ''),
         name:        nm,
@@ -257,48 +249,15 @@ function handleQuery_(nameParam) {
         pickup:      r[idx['取貨方式']],
         mailFee:     r[idx['郵寄費']],
         grandTotal:  r[idx['總金額']],
-        recipient:   r[idx['收件人']],
-        phone:       r[idx['收件人電話']],
-        delivery:    r[idx['配送方式']],
-        cvsName:     r[idx['超商名稱']],
-        storeName:   r[idx['門市名稱']],
-        storeAddr:   r[idx['門市地址']],
-        zip:         r[idx['郵遞區號']],
-        address:     r[idx['完整收件地址']],
         payStatus:   r[idx['付款狀態']],
         shipStatus:  r[idx['取件／寄送狀態']],
-        note:        r[idx['備註']]
+        note:        r[idx['備註']],
+        proxy:       String(r[idx['代領家人']] || '').trim()  // 管理者手填的代領家人
       });
     });
   }
 
-  // --- 會員免費紀念品（會員名單）---
-  var member = null;
-  var msh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_MEMBERS);
-  if (msh && msh.getLastRow() >= 2) {
-    var mvals = msh.getRange(2, 1, msh.getLastRow() - 1, MEM_HEADERS.length).getValues();
-    var midx = {};
-    MEM_HEADERS.forEach(function (h, i) { midx[h] = i; });
-    for (var i = 0; i < mvals.length; i++) {
-      var mr = mvals[i];
-      if (String(mr[midx['會員姓名']] || '').trim() !== name) continue;
-      member = {
-        name:    name,
-        freeQty: Math.max(0, Math.floor(toNumber_(mr[midx['免費數量']], 1))),
-        taken:   String(mr[midx['已領取']] || '未領取').trim(),
-        proxy:   String(mr[midx['代領明細']] || '').trim(),
-        note:    String(mr[midx['備註']] || '').trim()
-      };
-      break;
-    }
-  }
-
-  return {
-    ok: true,
-    records: out,
-    member: member,
-    purchasedQty: purchasedQty
-  };
+  return { ok: true, records: out };
 }
 
 /* ====================== 讀取設定 / 商品 ====================== */
@@ -426,7 +385,6 @@ function onOpen() {
 function setupSheet() {
   setupSettings_();
   setupProducts_();
-  setupMembers_();
   setupRecords_(false);
   buildStats_();
   try {
@@ -471,30 +429,6 @@ function setupProducts_() {
   sh.getRange(1, 1, 1, PRD_HEADERS.length).setFontWeight('bold').setBackground('#fde7c2');
   sh.setColumnWidth(3, 320); sh.setColumnWidth(5, 280); sh.setColumnWidth(6, 280);
   sh.setFrozenRows(1);
-}
-
-// 會員名單（會員免費紀念品）。非破壞式：已存在就不動。
-// 由管理者手動維護：一列＝一位「會收到/領取免費紀念品的人」。
-//  - 免費數量：這個人會拿到幾個免費紀念品（自己的＋代領家人的）
-//  - 已領取：未領取 / 已領取 / 已寄出（下拉，管理者手動勾）
-//  - 代領明細：幫哪些家人領（例：王大明、王小美）
-function setupMembers_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (ss.getSheetByName(SHEET_MEMBERS)) return;
-  var sh = ss.insertSheet(SHEET_MEMBERS);
-  sh.getRange(1, 1, 1, MEM_HEADERS.length).setValues([MEM_HEADERS]);
-  var rows = [
-    ['（範例）王小明', 1, '未領取', '', '範例列，可刪除：自己的會員免費紀念品'],
-    ['（範例）陳大哥', 3, '未領取', '陳大嫂、陳小弟', '範例列，可刪除：外地會員，含代領家人，隨額外購買一起寄']
-  ];
-  sh.getRange(2, 1, rows.length, MEM_HEADERS.length).setValues(rows);
-  sh.getRange(1, 1, 1, MEM_HEADERS.length).setFontWeight('bold').setBackground('#fde7c2');
-  sh.setColumnWidth(1, 160); sh.setColumnWidth(4, 240); sh.setColumnWidth(5, 280);
-  sh.setFrozenRows(1);
-
-  // 已領取下拉
-  var rule = SpreadsheetApp.newDataValidation().requireValueInList(MEM_TAKEN, true).build();
-  sh.getRange(2, 3, Math.max(sh.getMaxRows() - 1, 1), 1).setDataValidation(rule);
 }
 
 // 選單：強制重建登記資料表（會清空）
