@@ -208,6 +208,8 @@
         <label class="field-label" for="fName">姓名 <span style="color:var(--danger)">＊</span></label>
         <input type="text" id="fName" placeholder="請輸入您的姓名" autocomplete="name" />
         <div class="err-msg" id="err1"></div>
+        <label class="field-label" for="fNote">備註（選填）</label>
+        <textarea id="fNote" placeholder="想跟主辦說的話，可不填"></textarea>
         <div class="nav-row">
           <button class="btn btn-primary" onclick="next(2)">下一步 →</button>
         </div>
@@ -703,6 +705,9 @@ function renderReview() {
     rows += reviewRow('郵寄費', 'NT$ ' + mailFee());
   }
 
+  var noteVal = document.getElementById('fNote').value.trim();
+  if (noteVal) rows += reviewRow('備註', noteVal);
+
   rows += '<div class="review-grand"><span>應付總金額</span><b>NT$ ' + grandTotal() + '</b></div>';
   document.getElementById('reviewBox').innerHTML = rows;
 }
@@ -730,6 +735,7 @@ function submitForm() {
 
   var payload = {
     name: document.getElementById('fName').value.trim(),
+    note: document.getElementById('fNote').value.trim(),
     items: items,
     pickup: STATE.pickup
   };
@@ -836,6 +842,7 @@ function renderQueryResult(records, name) {
       if (r.zip)       rows += reviewRow('郵遞區號', r.zip);
       if (r.mailFee)   rows += reviewRow('郵寄費', 'NT$ ' + r.mailFee);
     }
+    if (r.note) rows += reviewRow('備註', r.note);
     rows += '<div class="review-grand"><span>總金額</span><b>NT$ ' + (r.grandTotal || 0) + '</b></div>';
     rows += '<div class="sec-title">目前狀態</div>';
     rows += reviewRow('付款狀態', r.payStatus || '未付款');
@@ -852,6 +859,7 @@ function saveDraft() {
   try {
     var draft = {
       name: document.getElementById('fName') ? document.getElementById('fName').value : '',
+      note: val('fNote'),
       qty: STATE.qty, pickup: STATE.pickup, delivery: STATE.delivery, cvs: STATE.cvs,
       recipient: val('fRecipient'), phone: val('fPhone'),
       storeName: val('fStoreName'), storeAddr: val('fStoreAddr'),
@@ -869,6 +877,7 @@ function restoreDraft() {
   var d;
   try { d = JSON.parse(raw); } catch (e) { return; }
   if (d.name) document.getElementById('fName').value = d.name;
+  if (d.note) document.getElementById('fNote').value = d.note;
   if (d.qty) { STATE.qty = d.qty; renderProducts(); }
   if (d.recipient) document.getElementById('fRecipient').value = d.recipient;
   if (d.phone) document.getElementById('fPhone').value = d.phone;

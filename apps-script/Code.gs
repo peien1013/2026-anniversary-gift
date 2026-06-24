@@ -23,7 +23,7 @@ var REC_HEADERS = [
   '商品總金額', '取貨方式', '郵寄費', '總金額',
   '收件人', '收件人電話', '配送方式',
   '超商名稱', '門市名稱', '門市地址', '郵遞區號', '完整收件地址',
-  '付款狀態', '取件／寄送狀態', '管理備註', '是否取消'
+  '付款狀態', '取件／寄送狀態', '管理備註', '是否取消', '備註'
 ];
 
 var PRD_HEADERS = [
@@ -177,6 +177,9 @@ function handleSubmit_(dataStr) {
 
   var grandTotal = productTotal + mailFee;
 
+  // --- 備註（登記人留言，選填）---
+  var note = cleanText_(data.note);
+
   // --- 寫入（鎖 + 批次）---
   var lock = LockService.getScriptLock();
   try { lock.waitLock(20000); }
@@ -194,7 +197,7 @@ function handleSubmit_(dataStr) {
       productTotal, pickupLabel, mailFee, grandTotal,
       recipient, phone, deliveryType,
       cvsName, storeName, storeAddr, zip, address,
-      '未付款', '未處理', '', ''
+      '未付款', '未處理', '', '', note
     ];
     sh.getRange(sh.getLastRow() + 1, 1, 1, row.length).setValues([row]);
     SpreadsheetApp.flush();
@@ -256,7 +259,8 @@ function handleQuery_(nameParam) {
       zip:         r[idx['郵遞區號']],
       address:     r[idx['完整收件地址']],
       payStatus:   r[idx['付款狀態']],
-      shipStatus:  r[idx['取件／寄送狀態']]
+      shipStatus:  r[idx['取件／寄送狀態']],
+      note:        r[idx['備註']]
     });
   });
   return { ok: true, records: out };
