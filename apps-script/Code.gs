@@ -14,6 +14,7 @@ var SHEET_SETTINGS = '系統設定';
 var SHEET_PRODUCTS = '商品設定';
 var SHEET_RECORDS  = '登記資料';
 var SHEET_STATS    = '統計';
+var SHEET_MAIL     = '郵寄清單';
 
 // 登記資料欄位順序（用「位置」讀寫，新增欄位請放最後）
 // 單一商品設計：不需商品2、不需小計
@@ -371,9 +372,78 @@ function onOpen() {
     .createMenu('紀念品系統')
     .addItem('初始化（只建立缺少的工作表）', 'setupSheet')
     .addSeparator()
-    .addItem('重建 登記資料表（會清空登記）', 'rebuildRecords')
+    .addItem('產生 郵寄清單', 'buildMailingList')
     .addItem('重建 統計頁', 'buildStats_')
+    .addSeparator()
+    .addItem('重建 登記資料表（會清空登記）', 'rebuildRecords')
     .addToUi();
+}
+
+/* ====================== 郵寄清單（一鍵整理需郵寄的人） ====================== */
+function buildMailingList() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var rec = ss.getSheetByName(SHEET_RECORDS);
+  var sh = ss.getSheetByName(SHEET_MAIL);
+  if (!sh) sh = ss.insertSheet(SHEET_MAIL);
+  sh.clear();
+
+  var headers = ['登記時間', '姓名', '收件人', '收件人電話', '配送方式',
+                 '寄送地址 / 門市', '額外購買', '代領家人', '合計件數', '付款狀態', '寄送狀態'];
+  sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+  var out = [];
+  var last = rec ? rec.getLastRow() : 0;
+  if (last >= 2) {
+    var vals = rec.getRange(2, 1, last - 1, REC_HEADERS.length).getValues();
+    var idx = {};
+    REC_HEADERS.forEach(function (h, i) { idx[h] = i; });
+    var tz = Session.getScriptTimeZone() || 'Asia/Taipei';
+
+    vals.forEach(function (r) {
+      if (String(r[idx['取貨方式']] || '').trim() !== '郵寄') return;
+      if (String(r[idx['是否取消']] || '').trim() === '是') return;
+
+      var deliv = String(r[idx['配送方式']] || '').trim();
+      var addr;
+      if (deliv === '超商店到店') {
+        addr = [r[idx['超商名稱']], r[idx['門市名稱']], r[idx['門市地址']]]
+          .filter(function (x) { return String(x).trim(); }).join('　');
+      } else {
+        addr = [r[idx['郵遞區號']], r[idx['完整收件地址']]]
+          .filter(function (x) { return String(x).trim(); }).join('　');
+      }
+
+      var qty = toNumber_(r[idx['數量']], 0);
+      var proxy = String(r[idx['代領家人']] || '').trim();
+      var proxyCount = proxy ? proxy.split(/[、,，;；\s]+/).filter(function (x) { return x.trim(); }).length : 0;
+
+      var t = r[idx['建立時間']];
+      out.push([
+        (t instanceof Date) ? Utilities.formatDate(t, tz, 'yyyy/MM/dd HH:mm') : String(t || ''),
+        r[idx['姓名']], r[idx['收件人']], r[idx['收件人電話']], deliv, addr,
+        qty, proxy, qty + proxyCount,
+        r[idx['付款狀態']], r[idx['取件／寄送狀態']]
+      ]);
+    });
+  }
+
+  if (out.length) {
+    sh.getRange(2, 1, out.length, headers.length).setValues(out);
+    var totalRow = out.length + 2;
+    sh.getRange(totalRow, 1).setValue('合計');
+    sh.getRange(totalRow, 7).setValue(out.reduce(function (a, b) { return a + (Number(b[6]) || 0); }, 0)); // 額外購買
+    sh.getRange(totalRow, 9).setValue(out.reduce(function (a, b) { return a + (Number(b[8]) || 0); }, 0)); // 合計件數
+    sh.getRange(totalRow, 1, 1, headers.length).setFontWeight('bold').setBackground('#fff2d6');
+  }
+
+  sh.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#fde7c2');
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(2, 120); sh.setColumnWidth(3, 120); sh.setColumnWidth(4, 130);
+  sh.setColumnWidth(6, 320); sh.setColumnWidth(8, 200);
+
+  try {
+    ss.toast('郵寄清單已產生（共 ' + out.length + ' 筆需郵寄）。', '紀念品系統', 5);
+  } catch (e) {}
 }
 
 /**
