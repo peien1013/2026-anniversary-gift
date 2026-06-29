@@ -375,9 +375,41 @@ function onOpen() {
     .addItem('產生 郵寄清單', 'buildMailingList')
     .addItem('重建 統計頁', 'buildStats_')
     .addItem('重算所有金額', 'recalcAllAmounts')
+    .addItem('標記重複姓名（紅底）', 'highlightDuplicates')
     .addSeparator()
     .addItem('重建 登記資料表（會清空登記）', 'rebuildRecords')
     .addToUi();
+}
+
+/* ====================== 重複姓名標記（條件式格式，自動套用） ====================== */
+// 選單：對現有「登記資料」套用「姓名重複→紅底」（不會動到資料）
+function highlightDuplicates() {
+  applyDuplicateHighlight_(getSheet_(SHEET_RECORDS));
+  try { SpreadsheetApp.getActiveSpreadsheet().toast('已設定：姓名重複會自動標紅底。', '紀念品系統', 4); } catch (e) {}
+}
+
+function applyDuplicateHighlight_(sh) {
+  var nameCol = REC_HEADERS.indexOf('姓名') + 1;
+  var L = colLetter_(nameCol);
+  var maxRows = Math.max(sh.getMaxRows() - 1, 1);
+  var range = sh.getRange(2, nameCol, maxRows, 1);
+  // 該姓名在整欄出現超過 1 次就上色
+  var formula = '=AND($' + L + '2<>"", COUNTIF($' + L + ':$' + L + ',$' + L + '2)>1)';
+  var rule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied(formula)
+    .setBackground('#f4c7c3')   // 淺紅底
+    .setRanges([range])
+    .build();
+
+  // 移除我們先前加的同色規則，避免重複堆疊；其他規則保留
+  var kept = sh.getConditionalFormatRules().filter(function (r) {
+    try {
+      var bc = r.getBooleanCondition();
+      return !bc || bc.getBackground() !== '#f4c7c3';
+    } catch (e) { return true; }
+  });
+  kept.push(rule);
+  sh.setConditionalFormatRules(kept);
 }
 
 /* ====================== 自動重算金額 ======================
@@ -619,6 +651,7 @@ function applyRecordsFormat_(sh) {
   var shipRule = SpreadsheetApp.newDataValidation().requireValueInList(SHIP_STATUS, true).build();
   sh.getRange(2, payCol, maxRows, 1).setDataValidation(payRule);
   sh.getRange(2, shipCol, maxRows, 1).setDataValidation(shipRule);
+  applyDuplicateHighlight_(sh);  // 重複姓名自動標紅底
 }
 
 /* ====================== 統計頁（公式自動更新） ====================== */
