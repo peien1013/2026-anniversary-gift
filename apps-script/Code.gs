@@ -374,9 +374,60 @@ function onOpen() {
     .addSeparator()
     .addItem('產生 郵寄清單', 'buildMailingList')
     .addItem('重建 統計頁', 'buildStats_')
+    .addItem('重算所有金額', 'recalcAllAmounts')
     .addSeparator()
     .addItem('重建 登記資料表（會清空登記）', 'rebuildRecords')
     .addToUi();
+}
+
+/* ====================== 自動重算金額 ======================
+ * 在「登記資料」手動改「單價／數量／郵寄費」後，
+ * 同一列的「商品總金額」「總金額」自動重算；統計頁是公式加總會跟著更新。
+ */
+function onEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    var sh = e.range.getSheet();
+    if (sh.getName() !== SHEET_RECORDS) return;
+
+    var cPrice = REC_HEADERS.indexOf('單價') + 1;
+    var cQty   = REC_HEADERS.indexOf('數量') + 1;
+    var cFee   = REC_HEADERS.indexOf('郵寄費') + 1;
+
+    var c1 = e.range.getColumn();
+    var c2 = e.range.getLastColumn();
+    var touched = (cPrice >= c1 && cPrice <= c2) ||
+                  (cQty   >= c1 && cQty   <= c2) ||
+                  (cFee   >= c1 && cFee   <= c2);
+    if (!touched) return;
+
+    var r1 = Math.max(e.range.getRow(), 2);
+    var r2 = e.range.getLastRow();
+    for (var r = r1; r <= r2; r++) recalcRecordRow_(sh, r);
+  } catch (err) { /* 靜默，避免干擾編輯 */ }
+}
+
+function recalcRecordRow_(sh, row) {
+  var cPrice = REC_HEADERS.indexOf('單價') + 1;
+  var cQty   = REC_HEADERS.indexOf('數量') + 1;
+  var cProd  = REC_HEADERS.indexOf('商品總金額') + 1;
+  var cFee   = REC_HEADERS.indexOf('郵寄費') + 1;
+  var cGrand = REC_HEADERS.indexOf('總金額') + 1;
+
+  var price = Number(sh.getRange(row, cPrice).getValue()) || 0;
+  var qty   = Number(sh.getRange(row, cQty).getValue()) || 0;
+  var fee   = Number(sh.getRange(row, cFee).getValue()) || 0;
+  var prod  = price * qty;
+  sh.getRange(row, cProd).setValue(prod);
+  sh.getRange(row, cGrand).setValue(prod + fee);
+}
+
+// 選單：一次重算整張「登記資料」的金額（大量修改後可手動跑一次）
+function recalcAllAmounts() {
+  var sh = getSheet_(SHEET_RECORDS);
+  var last = sh.getLastRow();
+  for (var r = 2; r <= last; r++) recalcRecordRow_(sh, r);
+  try { SpreadsheetApp.getActiveSpreadsheet().toast('已重算所有金額。', '紀念品系統', 4); } catch (e) {}
 }
 
 /* ====================== 郵寄清單（一鍵整理需郵寄的人） ====================== */
