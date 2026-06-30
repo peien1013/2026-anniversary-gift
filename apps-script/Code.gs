@@ -15,6 +15,8 @@ var SHEET_PRODUCTS = '商品設定';
 var SHEET_RECORDS  = '登記資料';
 var SHEET_STATS    = '統計';
 var SHEET_MAIL     = '郵寄清單';
+var SHEET_EARLY    = '提早領清單';
+var SHEET_SAMEDAY  = '當天領清單';
 
 // 登記資料欄位順序（用「位置」讀寫，新增欄位請放最後）
 // 單一商品設計：不需商品2、不需小計
@@ -35,6 +37,58 @@ var PRD_HEADERS = [
 
 var PAY_STATUS  = ['未付款', '已付款', '不需付款', '已退款'];
 var SHIP_STATUS = ['未處理', '待取件', '已取件', '待寄出', '已寄出', '已完成'];
+
+/* 常見姓氏筆畫表（依姓氏第一字筆畫排序用；表內沒有的姓氏會排到最後）。
+ * 若有姓氏排序不對，找到該姓氏、移到正確的筆畫那一行即可。 */
+var SURNAME_STROKES_RAW = {
+  2: '丁卜力刀',
+  3: '于山干弓大子千',
+  4: '王方尤毛文孔牛尹巴戈卞仇元公仁木水井天太夫化',
+  5: '古田白包史申平甘皮石丘司左冉玉召丙卯民永由甲付令北布弘充可玄句',
+  6: '朱江池全安任伊仲向后吉年朴自艾伍牟米危列匡成羊多伏戎圭老西印旭守',
+  7: '何余吳宋巫谷利李杜沈車辛邢貝步呂岑沙甫良言阮杞冷汪束吾杉但佐杏邑廷那',
+  8: '林周房易卓金孟武來季屈宗居幸岳服杭松杯卷和庚沛狄竺邵牧昌官宓汲杰欣沃知念',
+  9: '柯段侯俞姚紀柳韋查封施范紅軍風姜宣帥計柏拜咸姬胡哈禹後柴泉星昭度飛郁郎洪',
+  10: '徐殷翁馬高唐夏孫秦班凌桂桑袁倪涂奚烏祝耿容宮留員師庫索桓時晏哲倉修哥真軒益泰晉桐家宰海',
+  11: '張許梁章崔常國麥苗康寇婁區苑商巢寅寄從連梅紹習屠浦苻強庸偉健雪盛',
+  12: '黃馮程童賀喬雲鈕費焦舒曾游彭傅富智邰善邱雅開閔堯項越喻嵇須雄萊凱淳賁馭',
+  13: '楊詹雷賈廉解湯雍路楚鄒溫莊葉萬虞經裘馳楓詩揚督雋',
+  14: '趙廖管翟熊蓋端齊裴甄賓寧壽華臺滕慎福韶菊郜',
+  15: '劉蔡鄭歐黎練諸厲樊慶樂鄧樓廣蔣萱樑醇範潘葛',
+  16: '賴蕭盧錢駱龍諶穆蒲衛鮑燕蒙默蓬篤蒼樹橋機諾學',
+  17: '謝韓鍾戴應繆鴻矯璜賽蕾績駿臨薛隆陽',
+  18: '顏簡聶魏瞿闕鄢鄞雙豐璧鎮顓',
+  19: '羅龐譚關薄薇譙麗韜璽邊麒鵬',
+  20: '嚴藍鐘釋蘇黨寶競馨闞籍',
+  21: '顧鐵饒巍譽蘭鶴瓏',
+  22: '龔鄺權蘆藺',
+  23: '欒顯'
+};
+var STROKE_MAP = (function () {
+  var m = {};
+  Object.keys(SURNAME_STROKES_RAW).forEach(function (k) {
+    SURNAME_STROKES_RAW[k].split('').forEach(function (ch) { m[ch] = Number(k); });
+  });
+  return m;
+})();
+
+// 取姓氏（第一個字）的筆畫；查不到回 99（排最後）
+function surnameStrokes_(name) {
+  var s = String(name == null ? '' : name).trim();
+  if (!s) return 999;
+  var v = STROKE_MAP[s.charAt(0)];
+  return v ? v : 99;
+}
+
+// 依「姓氏筆畫少→多」排序的比較器；col = 姓名在陣列中的索引
+function strokeComparator_(col) {
+  return function (a, b) {
+    var sa = surnameStrokes_(a[col]), sb = surnameStrokes_(b[col]);
+    if (sa !== sb) return sa - sb;
+    var na = String(a[col]), nb = String(b[col]);
+    return na < nb ? -1 : (na > nb ? 1 : 0);
+  };
+}
 
 /* ====================== Web App 入口（JSONP） ====================== */
 function doGet(e) {
@@ -372,7 +426,7 @@ function onOpen() {
     .createMenu('紀念品系統')
     .addItem('初始化（只建立缺少的工作表）', 'setupSheet')
     .addSeparator()
-    .addItem('產生 郵寄清單', 'buildMailingList')
+    .addItem('產生 列印清單（郵寄／提早／當天）', 'buildAllPrintLists')
     .addItem('重建 統計頁', 'buildStats_')
     .addItem('重算所有金額', 'recalcAllAmounts')
     .addItem('標記重複姓名（紅底）', 'highlightDuplicates')
@@ -510,6 +564,8 @@ function buildMailingList() {
     });
   }
 
+  out.sort(strokeComparator_(1)); // 依姓氏筆畫少→多（姓名在第 2 欄）
+
   if (out.length) {
     sh.getRange(2, 1, out.length, headers.length).setValues(out);
     var totalRow = out.length + 2;
@@ -526,6 +582,74 @@ function buildMailingList() {
 
   try {
     ss.toast('郵寄清單已產生（共 ' + out.length + ' 筆需郵寄）。', '紀念品系統', 5);
+  } catch (e) {}
+}
+
+/* ====================== 取件清單（提早領 / 當天領，紙本列印用） ====================== */
+// 欄位：姓名 / 數量 / 總金額 / 已收 / 已給（已收、已給留空給你紙上打勾）；字體 20；依姓氏筆畫排序
+function buildPickupList_(sheetName, pickupLabel) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var rec = ss.getSheetByName(SHEET_RECORDS);
+  var sh = ss.getSheetByName(sheetName);
+  if (!sh) sh = ss.insertSheet(sheetName);
+  sh.clear();
+
+  var headers = ['姓名', '數量', '總金額', '已收', '已給'];
+  var rows = [];
+  var last = rec ? rec.getLastRow() : 0;
+  if (last >= 2) {
+    var vals = rec.getRange(2, 1, last - 1, REC_HEADERS.length).getValues();
+    var idx = {};
+    REC_HEADERS.forEach(function (h, i) { idx[h] = i; });
+    vals.forEach(function (r) {
+      if (String(r[idx['取貨方式']] || '').trim() !== pickupLabel) return;
+      if (String(r[idx['是否取消']] || '').trim() === '是') return;
+      rows.push([r[idx['姓名']], toNumber_(r[idx['數量']], 0), toNumber_(r[idx['總金額']], 0), '', '']);
+    });
+  }
+  rows.sort(strokeComparator_(0)); // 姓名在第 1 欄
+
+  sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+  if (rows.length) sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
+
+  var bodyRows = rows.length + 1;            // 含表頭
+  // 合計列
+  if (rows.length) {
+    var tr = rows.length + 2;
+    sh.getRange(tr, 1).setValue('合計');
+    sh.getRange(tr, 2).setValue(rows.reduce(function (a, b) { return a + (Number(b[1]) || 0); }, 0));
+    sh.getRange(tr, 3).setValue(rows.reduce(function (a, b) { return a + (Number(b[2]) || 0); }, 0));
+    bodyRows = tr;
+  }
+
+  // 字體 20、列高、欄寬、表頭
+  sh.getRange(1, 1, bodyRows, headers.length).setFontSize(20).setVerticalAlignment('middle');
+  sh.setRowHeights(1, bodyRows, 40);
+  sh.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#fde7c2');
+  if (rows.length) sh.getRange(rows.length + 2, 1, 1, headers.length).setFontWeight('bold').setBackground('#fff2d6');
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(1, 200); sh.setColumnWidth(2, 110);
+  sh.setColumnWidth(3, 150); sh.setColumnWidth(4, 110); sh.setColumnWidth(5, 110);
+
+  return rows.length;
+}
+
+// 選單：產生「提早領」「當天領」兩張清單
+function buildPickupLists() {
+  var n1 = buildPickupList_(SHEET_EARLY, '提早至高雄道場取件');
+  var n2 = buildPickupList_(SHEET_SAMEDAY, '週年慶當日取件');
+  try {
+    SpreadsheetApp.getActiveSpreadsheet()
+      .toast('提早領 ' + n1 + ' 筆、當天領 ' + n2 + ' 筆，已產生。', '紀念品系統', 5);
+  } catch (e) {}
+}
+
+// 選單：一次產生三種列印清單（郵寄 / 提早領 / 當天領），皆依姓氏筆畫排序
+function buildAllPrintLists() {
+  buildMailingList();
+  buildPickupLists();
+  try {
+    SpreadsheetApp.getActiveSpreadsheet().toast('三種列印清單已全部更新。', '紀念品系統', 5);
   } catch (e) {}
 }
 
